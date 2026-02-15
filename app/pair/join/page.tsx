@@ -1,6 +1,7 @@
+// app/pair/join/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -16,7 +17,11 @@ function getDeviceId() {
 
 export default function PairJoinPage() {
   const router = useRouter();
-  const deviceId = useMemo(() => (typeof window !== "undefined" ? getDeviceId() : ""), []);
+  const deviceId = useMemo(
+    () => (typeof window !== "undefined" ? getDeviceId() : ""),
+    []
+  );
+
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -24,8 +29,11 @@ export default function PairJoinPage() {
   const canSubmit = code.trim().length > 0 && !loading;
 
   const onSubmit = async () => {
+    if (!canSubmit) return;
+
     setLoading(true);
     setError("");
+
     try {
       const res = await fetch("/api/pair/join", {
         method: "POST",
@@ -35,13 +43,15 @@ export default function PairJoinPage() {
 
       const text = await res.text();
       let json: any = null;
-      try { json = JSON.parse(text); } catch {}
+      try {
+        json = JSON.parse(text);
+      } catch {}
 
       if (!res.ok) {
         const msg =
           json?.error === "invalid_or_expired_code"
             ? "コードが無効、または期限切れです"
-            : json?.error || `HTTP ${res.status}`;
+            : json?.error || `HTTP ${res.status}: ${text}`;
         throw new Error(msg);
       }
 
@@ -57,12 +67,16 @@ export default function PairJoinPage() {
   return (
     <main className="min-h-screen bg-[#F7F5F2] flex items-center justify-center p-6">
       <div className="w-full max-w-md space-y-4">
-        <Link href="/" className="text-sm text-gray-500">← 戻る</Link>
+        <Link href="/" className="text-sm text-gray-500">
+          ← 戻る
+        </Link>
 
         <h1 className="text-2xl font-semibold text-gray-800">コードを入力</h1>
 
         <div className="rounded-2xl border border-gray-300 bg-white p-5 space-y-3">
-          <p className="text-sm text-gray-600">相手から受け取ったコードを入力してください</p>
+          <p className="text-sm text-gray-600">
+            相手から受け取ったコードを入力してください
+          </p>
 
           <input
             className="w-full rounded-xl border border-gray-200 px-4 py-3 text-lg outline-none focus:ring-2 focus:ring-gray-300"
@@ -70,6 +84,9 @@ export default function PairJoinPage() {
             value={code}
             onChange={(e) => setCode(e.target.value)}
             inputMode="numeric"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSubmit();
+            }}
           />
 
           <button
