@@ -1,4 +1,3 @@
-// app/pair/create/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -27,18 +26,17 @@ export default function PairCreatePage() {
         setError("");
 
         const deviceId = getDeviceId();
+
         const res = await fetch("/api/pair/create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ deviceId }),
         });
 
-        const text = await res.text();
-        let json: any = null;
-        try { json = JSON.parse(text); } catch {}
+        const json = await res.json();
 
         if (!res.ok) {
-          throw new Error(json?.error || `HTTP ${res.status}: ${text}`);
+          throw new Error(json.error || "エラーが発生しました");
         }
 
         setCode(json.code);
@@ -56,21 +54,40 @@ export default function PairCreatePage() {
   return (
     <main className="min-h-screen bg-[#F7F5F2] flex items-center justify-center px-6">
       <div className="w-full max-w-md space-y-6">
-        <Link href="/" className="text-sm text-gray-500 hover:underline">← 戻る</Link>
+        <Link
+          href="/"
+          className="text-sm text-gray-500 hover:underline"
+        >
+          ← 戻る
+        </Link>
 
-        <h1 className="text-2xl font-semibold text-gray-800">コードを作成</h1>
+        <h1 className="text-2xl font-semibold text-gray-800">
+          コードを作成
+        </h1>
 
         <div className="rounded-2xl bg-white p-6 shadow-sm border">
-          {loading && <p className="text-gray-500">作成中…</p>}
-          {error && <p className="text-red-600">{error}</p>}
+          {loading && (
+            <p className="text-gray-500">作成中…</p>
+          )}
+
+          {error && (
+            <p className="text-red-600">{error}</p>
+          )}
 
           {!loading && !error && (
             <>
-              <p className="text-gray-600 text-sm">相手にこのコードを送ってください</p>
+              <p className="text-gray-600 text-sm">
+                相手にこのコードを送ってください
+              </p>
+
               <div className="mt-3 text-4xl tracking-widest font-bold text-gray-900">
                 {code}
               </div>
-              <p className="mt-3 text-xs text-gray-400 break-all">pairId: {pairId}</p>
+
+              {/* デバッグ用。不要なら削除OK */}
+              <p className="mt-3 text-xs text-gray-400 break-all">
+                pairId: {pairId}
+              </p>
             </>
           )}
         </div>

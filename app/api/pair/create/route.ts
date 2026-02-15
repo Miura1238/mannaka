@@ -1,39 +1,64 @@
-// src/app/api/pair/create/route.ts
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 function makeCode() {
-  // 6桁（課金で8桁/英数字に拡張しやすい）
+  // 6桁コード
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 export async function POST(req: Request) {
-  const { deviceId } = await req.json();
-  if (!deviceId) return NextResponse.json({ error: "deviceId required" }, { status: 400 });
+  try {
+    const { deviceId } = await req.json();
 
-  // 期限：24h（短くしてもOK）
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-  // 衝突したら作り直し（最大10回）
-  for (let i = 0; i < 10; i++) {
-    const code = makeCode();
-
-    const { data, error } = await supabaseAdmin
-      .from("pairs")
-      .insert({ code, owner_device_id: deviceId, expires_at: expiresAt })
-      .select("id, code, expires_at")
-      .single();
-
-    if (!error) {
-      // ownerもmembersに登録
-      await supabaseAdmin.from("pair_members").insert({
-        pair_id: data.id,
-        device_id: deviceId,
-        role: "owner",
-      });
-      return NextResponse.json({ pair: data });
+    if (!deviceId) {
+      return NextResponse.json(
+        { error: "deviceId required" },
+        { status: 400 }
+      );
     }
-  }
 
-  return NextResponse.json({ error: "failed to create code" }, { status: 500 });
+    const expiresAt = new Date(
+      Date.now() + 24 * 60 * 60 * 1000
+    ).toISOString();
+
+    // 最大10回衝突回避
+    for (let i = 0; i < 10; i++) {
+      const code = makeCode();
+
+      const { data, error } = await supabaseAdmin
+        .from("pairs")
+        .insert({
+          code,
+          owner_device_id: deviceId,
+          expires_at: expiresAt,
+        })
+        .select("id, code, expires_at")
+        .single();
+
+      if (!error && data) {
+        // ownerをpair_membersへ登録
+        await supabaseAdmin.from("pair_members").insert({
+          pair_id: data.id,
+          device_id: deviceId,
+          role: "owner",
+        });
+
+        return NextResponse.json({
+          code: data.code,
+          pairId: data.id,
+          expiresAt: data.expires_at,
+        });
+      }
+    }
+
+    return NextResponse.json(
+      { error: "failed to create code" },
+      { status: 500 }
+    );
+  } catch (err: any) {
+    return NextResponse.json(
+      { error: err.message || "unexpected error" },
+      { status: 500 }
+    );
+  }
 }
