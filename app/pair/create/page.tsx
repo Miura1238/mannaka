@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 function getDeviceId() {
@@ -14,10 +15,11 @@ function getDeviceId() {
 }
 
 export default function PairCreatePage() {
-  const [code, setCode] = useState<string>("");
-  const [pairId, setPairId] = useState<string>("");
+  const router = useRouter();
+  const [code, setCode] = useState("");
+  const [pairId, setPairId] = useState("");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const run = async () => {
@@ -34,60 +36,42 @@ export default function PairCreatePage() {
         });
 
         const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
-        if (!res.ok) {
-          throw new Error(json.error || "エラーが発生しました");
-        }
+        // ★超重要：pairId を保存
+        localStorage.setItem("mannaka_pair_id", json.pairId);
 
         setCode(json.code);
         setPairId(json.pairId);
+
+        // ★待機画面へ
+        router.replace("/paired");
       } catch (e: any) {
         setError(e.message || "エラーが発生しました");
       } finally {
         setLoading(false);
       }
     };
-
     run();
-  }, []);
+  }, [router]);
 
   return (
     <main className="min-h-screen bg-[#F7F5F2] flex items-center justify-center px-6">
       <div className="w-full max-w-md space-y-6">
-        <Link
-          href="/"
-          className="text-sm text-gray-500 hover:underline"
-        >
-          ← 戻る
-        </Link>
+        <Link href="/" className="text-sm text-gray-500 hover:underline">← 戻る</Link>
 
-        <h1 className="text-2xl font-semibold text-gray-800">
-          コードを作成
-        </h1>
+        <h1 className="text-2xl font-semibold text-gray-800">コードを作成</h1>
 
         <div className="rounded-2xl bg-white p-6 shadow-sm border">
-          {loading && (
-            <p className="text-gray-500">作成中…</p>
-          )}
-
-          {error && (
-            <p className="text-red-600">{error}</p>
-          )}
+          {loading && <p className="text-gray-500">作成中…</p>}
+          {error && <p className="text-red-600">{error}</p>}
 
           {!loading && !error && (
             <>
-              <p className="text-gray-600 text-sm">
-                相手にこのコードを送ってください
-              </p>
-
-              <div className="mt-3 text-4xl tracking-widest font-bold text-gray-900">
-                {code}
-              </div>
-
-              {/* デバッグ用。不要なら削除OK */}
-              <p className="mt-3 text-xs text-gray-400 break-all">
-                pairId: {pairId}
-              </p>
+              <p className="text-gray-600 text-sm">相手にこのコードを送ってください</p>
+              <div className="mt-3 text-4xl tracking-widest font-bold text-gray-900">{code}</div>
+              <p className="mt-3 text-xs text-gray-400 break-all">pairId: {pairId}</p>
+              <p className="mt-2 text-xs text-gray-400">このあと自動で待機画面に移動します。</p>
             </>
           )}
         </div>
