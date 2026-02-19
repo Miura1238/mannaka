@@ -28,6 +28,13 @@ export default function PairCreatePage() {
         setLoading(true);
         setError("");
 
+        // ✅ 既にペアIDがあるなら作り直さない（ここ超重要）
+        const existingPairId = localStorage.getItem("mannaka_pair_id");
+        if (existingPairId) {
+          router.replace("/paired");
+          return;
+        }
+
         const deviceId = getDeviceId();
         const res = await fetch("/api/pair/create", {
           method: "POST",
@@ -35,38 +42,31 @@ export default function PairCreatePage() {
           body: JSON.stringify({ deviceId }),
         });
 
-        const text = await res.text();
-        let json: any = null;
-        try {
-          json = JSON.parse(text);
-        } catch {}
-
-        if (!res.ok) {
-          throw new Error(json?.error || `HTTP ${res.status}: ${text}`);
-        }
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
         setCode(json.code);
         setPairId(json.pairId);
 
-        // 重要：この端末のpairIdを保存
+        // ✅ 両者共通で使う
         localStorage.setItem("mannaka_pair_id", json.pairId);
 
+        // 作成したら待機画面へ
+        router.replace("/paired");
       } catch (e: any) {
-        setError(e?.message || "エラーが発生しました");
+        setError(e.message || "エラーが発生しました");
       } finally {
         setLoading(false);
       }
     };
 
     run();
-  }, []);
+  }, [router]);
 
   return (
     <main className="min-h-screen bg-[#F7F5F2] flex items-center justify-center px-6">
       <div className="w-full max-w-md space-y-6">
-        <Link href="/" className="text-sm text-gray-500 hover:underline">
-          ← 戻る
-        </Link>
+        <Link href="/" className="text-sm text-gray-500 hover:underline">← 戻る</Link>
 
         <h1 className="text-2xl font-semibold text-gray-800">コードを作成</h1>
 
@@ -77,17 +77,8 @@ export default function PairCreatePage() {
           {!loading && !error && (
             <>
               <p className="text-gray-600 text-sm">相手にこのコードを送ってください</p>
-              <div className="mt-3 text-4xl tracking-widest font-bold text-gray-900">
-                {code}
-              </div>
+              <div className="mt-3 text-4xl tracking-widest font-bold text-gray-900">{code}</div>
               <p className="mt-3 text-xs text-gray-400 break-all">pairId: {pairId}</p>
-
-              <button
-                className="mt-5 w-full rounded-xl py-3 font-medium bg-gray-800 text-white"
-                onClick={() => router.push("/paired")}
-              >
-                送ったので待機する
-              </button>
             </>
           )}
         </div>
