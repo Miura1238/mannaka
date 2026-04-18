@@ -1,25 +1,14 @@
-// app/paired/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-function getDeviceId() {
-  const key = "mannaka_device_id";
-  let v = localStorage.getItem(key);
-  if (!v) {
-    v = crypto.randomUUID();
-    localStorage.setItem(key, v);
-  }
-  return v;
-}
-
 export default function PairedPage() {
   const router = useRouter();
-  const deviceId = useMemo(() => (typeof window !== "undefined" ? getDeviceId() : ""), []);
   const [pairId, setPairId] = useState("");
   const [count, setCount] = useState<number>(0);
+  const [code, setCode] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -28,7 +17,7 @@ export default function PairedPage() {
   }, []);
 
   useEffect(() => {
-    if (!pairId && !deviceId) return;
+    if (!pairId) return;
 
     let timer: any = null;
     let cancelled = false;
@@ -39,25 +28,19 @@ export default function PairedPage() {
         const res = await fetch("/api/pair/status", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pairId: pairId || null, deviceId: deviceId || null }),
         });
 
-        const text = await res.text();
-        let json: any = null;
-        try {
-          json = JSON.parse(text);
-        } catch {}
-
-        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}: ${text}`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.error || `HTTP ${res.status}`);
         if (!json?.hasPair) return;
 
-        const members = json.members ?? [];
-        const memberCount = members.length;
-        if (!cancelled) setCount(memberCount);
+        const memberCount = (json.members ?? []).length;
+        if (!cancelled) {
+          setCount(memberCount);
+          setCode(json.pair?.code ?? "");
+        }
 
-        // 2人揃ったら進む
         if (memberCount >= 2) {
-          // 念のためpairIdを保存
           localStorage.setItem("mannaka_pair_id", json.pair.id);
           router.push("/dashboard");
         }
@@ -73,22 +56,21 @@ export default function PairedPage() {
       cancelled = true;
       if (timer) clearInterval(timer);
     };
-  }, [pairId, deviceId]);
+  }, [pairId, router]);
 
   return (
     <main className="min-h-screen bg-[#F7F5F2] flex items-center justify-center p-6">
       <div className="w-full max-w-md space-y-4">
-        <Link href="/" className="text-sm text-gray-500">
-          ← 戻る
-        </Link>
+        <Link href="/" className="text-sm text-gray-500">← 戻る</Link>
 
-        <div className="rounded-2xl border bg-white p-6">
-          <h1 className="text-xl font-semibold text-gray-800">ダッシュボード</h1>
-          <p className="mt-2 text-sm text-gray-600 break-all">pairId: {pairId || "（未取得）"}</p>
-          <p className="mt-1 text-sm text-gray-600">参加人数: {count} / 2</p>
-          <p className="mt-3 text-xs text-gray-500">2人揃ったら自動で次へ進みます…</p>
-
-          {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+        <div className="rounded-2xl border bg-white p-6 text-center space-y-4">
+          <h1 className="text-xl font-semibold text-gray-800">相手を待っています…</h1>
+          <p className="text-sm text-gray-500">コードを相手に送って、参加してもらいましょう</p>
+          {code && (
+            <p className="text-4xl font-bold tracking-widest text-gray-900">{code}</p>
+          )}
+          <p className="text-2xl font-bold text-gray-400">{count} / 2</p>
+          {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
       </div>
     </main>

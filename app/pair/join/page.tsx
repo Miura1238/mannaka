@@ -1,23 +1,11 @@
-// app/pair/join/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-function getDeviceId() {
-  const key = "mannaka_device_id";
-  let v = localStorage.getItem(key);
-  if (!v) {
-    v = crypto.randomUUID();
-    localStorage.setItem(key, v);
-  }
-  return v;
-}
-
 export default function PairJoinPage() {
   const router = useRouter();
-  const deviceId = useMemo(() => (typeof window !== "undefined" ? getDeviceId() : ""), []);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,14 +19,10 @@ export default function PairJoinPage() {
       const res = await fetch("/api/pair/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: code.trim(), deviceId }),
+        body: JSON.stringify({ code: code.trim() }),
       });
 
-      const text = await res.text();
-      let json: any = null;
-      try {
-        json = JSON.parse(text);
-      } catch {}
+      const json = await res.json();
 
       if (!res.ok) {
         const msg =
@@ -60,10 +44,7 @@ export default function PairJoinPage() {
   return (
     <main className="min-h-screen bg-[#F7F5F2] flex items-center justify-center p-6">
       <div className="w-full max-w-md space-y-4">
-        <Link href="/" className="text-sm text-gray-500">
-          ← 戻る
-        </Link>
-
+        <Link href="/" className="text-sm text-gray-500">← 戻る</Link>
         <h1 className="text-2xl font-semibold text-gray-800">コードを入力</h1>
 
         <div className="rounded-2xl border border-gray-300 bg-white p-5 space-y-3">
