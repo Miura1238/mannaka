@@ -49,11 +49,7 @@ export default function DashboardPage() {
         setMembersCount(members.length);
         setPairId(json?.pair?.id ?? "");
 
-        // ★2人揃ったら同じ画面へ遷移（ここが目的）
-        if (members.length >= 2) {
-          // 行き先は仮で /paired にしてる（次で作る）
-          router.replace("/paired");
-        }
+        // 2人揃ったらここで止まる（ダッシュボードが最終ページ）
       } catch (e: any) {
         setError(e?.message ?? "error");
       } finally {
