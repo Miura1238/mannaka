@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 type Task = {
   id: string;
@@ -152,6 +153,32 @@ export default function Dashboard() {
   const [plan, setPlan] = useState("");
   const [logs, setLogs] = useState<LogItem[]>([]);
   const [letter, setLetter] = useState<SavedLetter | null>(null);
+  const [myEmail, setMyEmail] = useState("");
+  const [partnerEmail, setPartnerEmail] = useState("");
+  const [paired, setPaired] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.email) setMyEmail(user.email);
+    });
+
+    fetch("/api/pair/status", { method: "POST" })
+      .then((r) => r.json())
+      .then((json) => {
+        if (!json?.hasPair) return;
+        const members: { device_id: string }[] = json.members ?? [];
+        if (members.length >= 2) {
+          setPaired(true);
+          // 相手のuser_idからメールアドレスを取得（簡易表示用）
+          supabase.auth.getUser().then(({ data: { user } }) => {
+            const partner = members.find((m) => m.device_id !== user?.id);
+            if (partner) setPartnerEmail(partner.device_id.slice(0, 8) + "…");
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     setMemo(localStorage.getItem(LS_KEYS.memo) ?? "");
@@ -205,6 +232,32 @@ export default function Dashboard() {
           <button onClick={clearAll} className="text-sm text-gray-500 hover:text-gray-700 underline underline-offset-4">
             リセット
           </button>
+        </div>
+
+        {/* pair status */}
+        <div className="flex items-center justify-center gap-4">
+          {/* 相手 */}
+          <div className="flex flex-col items-center gap-1">
+            <div className={`w-14 h-14 rounded-full flex items-center justify-center text-white text-lg font-bold ${paired ? "bg-[#A8C3A0]" : "bg-gray-200"}`}>
+              {paired ? partnerEmail.slice(0, 1).toUpperCase() : "?"}
+            </div>
+            <span className="text-xs text-gray-400">{paired ? "相手" : "未接続"}</span>
+          </div>
+
+          {/* connector */}
+          <div className="flex items-center gap-1">
+            <div className={`h-0.5 w-8 ${paired ? "bg-[#A8C3A0]" : "bg-gray-200"}`} />
+            <div className={`text-lg ${paired ? "text-[#A8C3A0]" : "text-gray-200"}`}>♡</div>
+            <div className={`h-0.5 w-8 ${paired ? "bg-[#A8C3A0]" : "bg-gray-200"}`} />
+          </div>
+
+          {/* 自分 */}
+          <div className="flex flex-col items-center gap-1">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-lg font-bold bg-gray-700">
+              {myEmail.slice(0, 1).toUpperCase() || "?"}
+            </div>
+            <span className="text-xs text-gray-400">あなた</span>
+          </div>
         </div>
 
         {/* board */}
